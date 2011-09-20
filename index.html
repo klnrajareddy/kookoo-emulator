@@ -3,9 +3,11 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
 
 <script>
-var contextRoot = "/tama/";
+var contextRoot = "/bbcwt/";
 var collectdtmf = 1;
+var timeout = 10000;
 var dtmf = "";
+var nexturl = "";
 function pollCall() {
 	if ($('#poll_call').is(':checked')	)
 	$.getJSON("/kookoo-emulator/calls.jsp?phone=" + $('#phone').val() , function(data){
@@ -22,9 +24,9 @@ function pollCall() {
 	});
 }
 
-$(function(){
-	setTimeout(pollCall, 500);
-});
+// $(function(){
+//  setTimeout(pollCall, 500);
+// });
 
 
 function playfile(id) {
@@ -40,11 +42,12 @@ var i = idx;
 if (typeof idx == "undefined") i=0;
 for (; i<audioslist.length; i++){
 	var ad = audioslist[i].id;
-	window.setTimeout("playfile('" + ad+ "');", (1+duration*1000));
-	if (isNaN(audioslist[i].duration)){ setTimeout("playAll(" + i + ")", 500);  return;}
-	else {
-		duration += audioslist[i].duration;
-	}
+  // playfile(ad);
+  window.setTimeout("playfile('" + ad+ "');", (1+duration*1000));
+  if (isNaN(audioslist[i].duration)){ setTimeout("playAll(" + i + ")", 500);  return;}
+  else {
+   duration += audioslist[i].duration;
+  }
 }	
 }
 
@@ -55,11 +58,19 @@ function call(path) {
 	$.ajax({url:path,
 			crossDomain:true,
 			success: function(data) {
-				//alert(data);
+				console.log(data);
 				
 				var html = "";//'<audio controls="controls" id="message" autoplay="autoplay">';
 				//var msg = ""
-				collectdtmf = $(data).find('collectdtmf').attr('l');
+				var collectdtmfnode = $(data).find('collectdtmf');
+				collectdtmf = collectdtmfnode.attr('l');
+				timeout = collectdtmfnode.attr('o');
+				nexturl = $(data).find('gotourl').text();
+				
+				if(!timeout) {
+				  timeout = 10000;
+				}
+				
 				$(data).find('playaudio').each(function() {
 					var filename = $(this).text();//.replace(/.*\//, "");
 					var text = filename.replace(/.wav/,"");
@@ -68,6 +79,7 @@ function call(path) {
 					html += '<source src="' + filename+ '" type="audio/wave" />';
 					//msg+=text + " ";
 				});
+				
 				$(data).find('playtext').each(function() {
 					html+= "<div>" +  $(this).text() + "</div>"
 				});
@@ -76,7 +88,7 @@ function call(path) {
 				$('#result').html(html);
 				
 				playAll();
-			    },
+			  },
 			error:function(x, status, err) {alert('error ' + status + err);}
 			});	
 	} catch(e) {
@@ -91,7 +103,7 @@ function newCall(){
 function endCall() {
 	var phone = $('#phone').val();
 	var symptoms_reporting_option = ($('#symptoms_reporting').is(":checked")?"&symptoms_reporting=true":"");
-	call(contextRoot + 'ivr/reply?event=hangup&cid='+phone+'&sid=0000000000' + symptoms_reporting_option);
+	call(contextRoot + 'ivr/reply?event=Hangup&cid='+phone+'&sid=0000000000' + symptoms_reporting_option);
 }
 function login() {
 	var pin = $('#pin').val();
@@ -115,7 +127,6 @@ function send(i){
 		}
 	}
 
-
 	var phone = $('#phone').val();
 	var dosageId = $('#dosage_id').val();
 	var regimen_id = $('#regimen_id').val();
@@ -133,6 +144,16 @@ function play(i){
 	el.play();
 }
 
+function continueInteraction() {
+  console.log(nexturl);
+  if(nexturl) {
+    call(nexturl);
+  } else {
+    call(contextRoot+'ivr/reply');
+  }
+}
+
+
 </script>
 <style>
 .optional{
@@ -147,6 +168,7 @@ function play(i){
 <br/>
 <button onclick="newCall();">New Call</button>
 <button onclick="login();">Login</button>
+<button onclick="continueInteraction();">ContinueInteraction()</button>
  <button onclick="endCall();">End Call</button> 
  
  <table>
